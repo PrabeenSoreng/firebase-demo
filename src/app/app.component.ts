@@ -1,5 +1,7 @@
 import { Component } from '@angular/core';
-import { AngularFireDatabase } from '@angular/fire/database';
+import { AngularFireDatabase, AngularFireList } from '@angular/fire/database';
+import { Observable } from 'rxjs';
+import {map} from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
@@ -8,15 +10,42 @@ import { AngularFireDatabase } from '@angular/fire/database';
 })
 export class AppComponent {
   title = 'firebase-demo';
-  // courses: Observable<any[]>;
-  courses: any[];
+
+  courseList: AngularFireList<any>;
+  courses$: Observable<any[]>;
+  course$;
+  author$;
   constructor(
-    db: AngularFireDatabase
+    private db: AngularFireDatabase
   ) {
-    db.list('courses').valueChanges()
-      .subscribe(courses => {
-        this.courses = courses;
-        console.log(this.courses);
-      });
+    this.courseList = db.list('courses');
+    this.courses$ = this.courseList.snapshotChanges()
+    .pipe(
+      map(changes =>
+        changes.map(c => ({key: c.payload.key, ...c.payload.val() }))
+        )
+    );
+    this.course$ = db.object('courses/1').valueChanges();
+    this.author$ = db.object('authors/1').valueChanges();
+}
+  add(course: HTMLInputElement) {
+    this.courseList.push({
+      name: course.value,
+      price: 150,
+      isLive: true,
+    });
+    course.value = '';
+  }
+  update(key, course: HTMLInputElement) {
+    this.courseList.update(key, {
+      name: course.value
+    });
+    course.value = '';
+  }
+  remove(key) {
+    this.courseList.remove(key);
+  }
+  removeAll() {
+    this.courseList.remove();
   }
 }
